@@ -206,6 +206,42 @@ export const ICON_PATHS: Record<IconKind, { d: string; scale: number }> = {
 /** Aircraft whose icon should always keep its upright orientation. */
 export const UPRIGHT_KINDS: IconKind[] = ["balloon", "blimp"];
 
+/**
+ * Radar filter categories. Every aircraft kind belongs to exactly one, so the
+ * filter panel can switch whole families of traffic on and off.
+ */
+export type CategoryKey = "airliner" | "cargo" | "military" | "light" | "rotary" | "special";
+
+export const CATEGORIES: { key: CategoryKey; label: string; kinds: IconKind[] }[] = [
+  { key: "airliner", label: "Airliners", kinds: ["airliner", "widebody", "regional"] },
+  { key: "cargo", label: "Cargo & heavies", kinds: ["cargo", "an225"] },
+  { key: "military", label: "Military", kinds: ["military", "fighter"] },
+  { key: "light", label: "Light & GA", kinds: ["light", "glider"] },
+  { key: "rotary", label: "Helicopters", kinds: ["helicopter"] },
+  { key: "special", label: "Special", kinds: ["concorde", "walrus", "blimp", "balloon", "sleigh"] },
+];
+
+const KIND_TO_CATEGORY = new Map<IconKind, CategoryKey>(
+  CATEGORIES.flatMap((c) => c.kinds.map((k) => [k, c.key] as [IconKind, CategoryKey])),
+);
+
+export function categoryFor(aircraft: string): CategoryKey {
+  return KIND_TO_CATEGORY.get(iconKindFor(aircraft)) ?? "airliner";
+}
+
+/**
+ * Single side-view silhouette used by the aircraft info card so a livery can be
+ * painted onto the fuselage and tail.
+ */
+export const SIDE_VIEW = {
+  fuselage:
+    "M14 52 C34 40 92 34 168 34 C206 34 232 37 250 43 L272 52 L250 61 C232 67 206 70 168 70 C92 70 34 64 14 52 Z",
+  tail: "M232 34 L268 6 L286 6 L272 34 Z",
+  wing: "M96 52 L52 92 L74 92 L140 56 Z",
+  stab: "M226 44 L200 24 L214 24 L248 42 Z",
+  window: "M40 46 L150 44 L150 50 L40 51 Z",
+} as const;
+
 /** Flight-level formatting: 5000 ft -> "FL050". */
 export function toFlightLevel(feet: number): string {
   return `FL${String(Math.round(feet / 100)).padStart(3, "0")}`;
