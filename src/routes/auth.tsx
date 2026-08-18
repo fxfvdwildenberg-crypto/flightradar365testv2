@@ -50,7 +50,7 @@ function AuthPage() {
 
   const signUp = async () => {
     setBusy(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -61,6 +61,11 @@ function AuthPage() {
     setBusy(false);
     if (error) {
       toast.error(error.message);
+      return;
+    }
+    if (!data.session) {
+      setConfirmSent(true);
+      toast.success("Account created — check your email to confirm it");
       return;
     }
     toast.success("Account created — you can start filing flight plans");
