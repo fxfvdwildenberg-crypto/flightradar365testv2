@@ -35,6 +35,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmSent, setConfirmSent] = useState(false);
 
   const signIn = async () => {
     setBusy(true);
