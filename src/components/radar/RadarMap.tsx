@@ -12,7 +12,13 @@ import {
   type Island,
 } from "@/lib/world";
 import type { LiveFlight } from "@/lib/flights";
-import { ICON_PATHS, UPRIGHT_KINDS, iconKindFor } from "@/lib/aircraft";
+import { ICON_PATHS } from "@/lib/aircraft";
+
+/**
+ * Every aircraft is drawn with the same silhouette and the same colour so the
+ * radar reads as one uniform traffic layer. Emergencies stay red.
+ */
+const UNIFORM_ICON = ICON_PATHS.airliner;
 
 import { POSITIONS, type Atis, type AtcSession } from "@/lib/atc";
 import { isEmergencySquawk } from "@/lib/squawk";
@@ -183,8 +189,17 @@ export function RadarMap({
 
   /* ---------------- pointer pan + pinch ---------------- */
   const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const pinchRef = useRef<{ dist: number; span: number } | null>(null);
+  const pinchRef = useRef<{ dist: number; span: number; angle: number; rot: number } | null>(null);
   const dragged = useRef(false);
+  const [rot, setRot] = useState(0);
+  const rotRef = useRef(0);
+  rotRef.current = rot;
+
+  /** Screen delta -> world delta, accounting for the current map rotation. */
+  const unrotate = (dx: number, dy: number) => {
+    const a = (-rotRef.current * Math.PI) / 180;
+    return { x: dx * Math.cos(a) - dy * Math.sin(a), y: dx * Math.sin(a) + dy * Math.cos(a) };
+  };
 
   const scaleOf = (c: Camera) => c.span / Math.min(size.w, size.h);
 
@@ -204,7 +219,9 @@ export function RadarMap({
     if (pts.length >= 2) {
       const [a, b] = pts as [{ x: number; y: number }, { x: number; y: number }];
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
-      if (!pinchRef.current) pinchRef.current = { dist, span: camRef.current.span };
+      const angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+      if (!pinchRef.current)
+        pinchRef.current = { dist, span: camRef.current.span, angle, rot: rotRef.current };
       else {
         // Capture now: the state updater runs later, by which time a pointerup
         // may already have cleared pinchRef.
@@ -212,6 +229,11 @@ export function RadarMap({
         const ratio = base.dist / Math.max(dist, 1);
         const nextSpan = clamp(base.span * ratio, minSpan, maxSpan);
         setCam((c) => ({ ...c, span: nextSpan }));
+        // Two-finger twist rotates the map.
+        let delta = angle - base.angle;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        setRot(((base.rot + delta) % 360 + 360) % 360);
       }
 
       dragged.current = true;
@@ -222,7 +244,8 @@ export function RadarMap({
     const dy = e.clientY - prev.y;
     if (Math.abs(dx) + Math.abs(dy) > 2) dragged.current = true;
     const s = scaleOf(camRef.current);
-    setCam((c) => ({ ...c, cx: c.cx - dx * s, cy: c.cy - dy * s }));
+    const w = unrotate(dx, dy);
+    setCam((c) => ({ ...c, cx: c.cx - w.x * s, cy: c.cy - w.y * s }));
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
