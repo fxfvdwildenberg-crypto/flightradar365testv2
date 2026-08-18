@@ -282,11 +282,6 @@ export function RadarMap({
   // Always render every island: zoom, not selection, decides the detail level.
   const visibleIslands = ISLANDS;
 
-  const zoomBy = (factor: number) => {
-    const next = clamp(camRef.current.span * factor, minSpan, maxSpan);
-    flyTo({ ...camRef.current, span: next }, 320);
-  };
-
   const handleMapClick = (e: React.MouseEvent) => {
     if (!placing || !onMapClick || dragged.current) return;
     const el = containerRef.current;
