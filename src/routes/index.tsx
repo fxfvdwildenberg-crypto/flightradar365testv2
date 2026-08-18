@@ -99,14 +99,15 @@ function RadarPage() {
   const [pendingPoint, setPendingPoint] = useState<{ x: number; y: number } | null>(null);
 
   const [regionsOpen, setRegionsOpen] = useState(false);
-  const [showClouds, setShowClouds] = useState(false);
-  const [showRoutes, setShowRoutes] = useState(true);
-  const [showLabels, setShowLabels] = useState(true);
+  const [showClouds, setShowClouds] = usePersistentState("clouds", false);
+  const [showRoutes, setShowRoutes] = usePersistentState("routes", true);
+  const [showLabels, setShowLabels] = usePersistentState("labels", true);
   const [adminCodeOpen, setAdminCodeOpen] = useState(false);
   const [adminCode, setAdminCode] = useState("");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [query, setQuery] = useState("");
-  const [widgets, setWidgets] = useState<Set<WidgetKey>>(() => new Set<WidgetKey>(["clock"]));
+  const [widgets, setWidgets] = usePersistentSet<WidgetKey>("widgets", ["clock"]);
+  const [hiddenCats, setHiddenCats] = usePersistentSet<CategoryKey>("hidden-categories", []);
   const [offsetMin, setOffsetMin] = useState(0);
 
   const { canInstall, installed, install } = useInstallPrompt();
@@ -171,7 +172,8 @@ function RadarPage() {
     const all = plans
       .map((p) => computeFlight(p, clock))
       .filter((f): f is LiveFlight => !!f)
-      .filter((f) => isVisibleOnRadar(f, clock));
+      .filter((f) => isVisibleOnRadar(f, clock))
+      .filter((f) => !hiddenCats.has(categoryFor(f.plan.aircraft)));
     if (!focus) return all;
     const codes = new Set(airportsOfIsland(focus).map((a) => a.icao));
     // Keep flights that touch this island, or are currently over it.
@@ -182,7 +184,8 @@ function RadarPage() {
         codes.has(f.plan.arr_icao) ||
         (isl ? Math.hypot(f.x - isl.x, f.y - isl.y) < isl.radius * 3 : false),
     );
-  }, [plans, clock, focus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans, clock, focus, Array.from(hiddenCats).sort().join(",")]);
 
 
   const selectedFlight = flights.find((f) => f.plan.id === selectedFlightId) ?? null;
