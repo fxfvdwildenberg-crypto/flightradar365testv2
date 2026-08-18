@@ -35,6 +35,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmSent, setConfirmSent] = useState(false);
 
   const signIn = async () => {
     setBusy(true);
@@ -50,7 +51,7 @@ function AuthPage() {
 
   const signUp = async () => {
     setBusy(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -61,6 +62,11 @@ function AuthPage() {
     setBusy(false);
     if (error) {
       toast.error(error.message);
+      return;
+    }
+    if (!data.session) {
+      setConfirmSent(true);
+      toast.success("Account created — check your email to confirm it");
       return;
     }
     toast.success("Account created — you can start filing flight plans");
@@ -128,6 +134,11 @@ function AuthPage() {
             </TabsContent>
 
             <TabsContent value="signup" className="mt-4 space-y-3">
+              {confirmSent && (
+                <p className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                  We sent a confirmation link to {email}. Click it, then sign in.
+                </p>
+              )}
               <Field label="Callsign / name" value={displayName} onChange={setDisplayName} />
               <Field label="Email" value={email} onChange={setEmail} type="email" />
               <Field label="Password" value={password} onChange={setPassword} type="password" />
