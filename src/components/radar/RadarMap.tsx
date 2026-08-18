@@ -346,6 +346,7 @@ export function RadarMap({
 
         </defs>
 
+        <g transform={`rotate(${rot} ${cam.cx} ${cam.cy})`}>
         <rect
           x={cam.cx - viewW}
           y={cam.cy - viewH}
@@ -452,6 +453,7 @@ export function RadarMap({
             ))}
           </g>
         )}
+        </g>
       </svg>
 
 
