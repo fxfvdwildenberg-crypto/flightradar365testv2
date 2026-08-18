@@ -12,7 +12,13 @@ import {
   type Island,
 } from "@/lib/world";
 import type { LiveFlight } from "@/lib/flights";
-import { ICON_PATHS, UPRIGHT_KINDS, iconKindFor } from "@/lib/aircraft";
+import { ICON_PATHS } from "@/lib/aircraft";
+
+/**
+ * Every aircraft is drawn with the same silhouette and the same colour so the
+ * radar reads as one uniform traffic layer. Emergencies stay red.
+ */
+const UNIFORM_ICON = ICON_PATHS.airliner;
 
 import { POSITIONS, type Atis, type AtcSession } from "@/lib/atc";
 import { isEmergencySquawk } from "@/lib/squawk";
@@ -161,10 +167,9 @@ export function RadarMap({
     const next = clamp(current.span * Math.exp(dy * 0.0018), minSpan, maxSpan);
     if (next === current.span) return;
     const scale = current.span / Math.min(rect.width, rect.height);
-    const px = e.clientX - rect.left - rect.width / 2;
-    const py = e.clientY - rect.top - rect.height / 2;
-    const wx = current.cx + px * scale;
-    const wy = current.cy + py * scale;
+    const p = unrotate(e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2);
+    const wx = current.cx + p.x * scale;
+    const wy = current.cy + p.y * scale;
     const k = next / current.span;
     if (animRef.current) cancelAnimationFrame(animRef.current);
     setCam({ cx: wx + (current.cx - wx) * k, cy: wy + (current.cy - wy) * k, span: next });
@@ -183,8 +188,17 @@ export function RadarMap({
 
   /* ---------------- pointer pan + pinch ---------------- */
   const pointers = useRef(new Map<number, { x: number; y: number }>());
-  const pinchRef = useRef<{ dist: number; span: number } | null>(null);
+  const pinchRef = useRef<{ dist: number; span: number; angle: number; rot: number } | null>(null);
   const dragged = useRef(false);
+  const [rot, setRot] = useState(0);
+  const rotRef = useRef(0);
+  rotRef.current = rot;
+
+  /** Screen delta -> world delta, accounting for the current map rotation. */
+  const unrotate = (dx: number, dy: number) => {
+    const a = (-rotRef.current * Math.PI) / 180;
+    return { x: dx * Math.cos(a) - dy * Math.sin(a), y: dx * Math.sin(a) + dy * Math.cos(a) };
+  };
 
   const scaleOf = (c: Camera) => c.span / Math.min(size.w, size.h);
 
@@ -204,7 +218,9 @@ export function RadarMap({
     if (pts.length >= 2) {
       const [a, b] = pts as [{ x: number; y: number }, { x: number; y: number }];
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
-      if (!pinchRef.current) pinchRef.current = { dist, span: camRef.current.span };
+      const angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+      if (!pinchRef.current)
+        pinchRef.current = { dist, span: camRef.current.span, angle, rot: rotRef.current };
       else {
         // Capture now: the state updater runs later, by which time a pointerup
         // may already have cleared pinchRef.
@@ -212,6 +228,11 @@ export function RadarMap({
         const ratio = base.dist / Math.max(dist, 1);
         const nextSpan = clamp(base.span * ratio, minSpan, maxSpan);
         setCam((c) => ({ ...c, span: nextSpan }));
+        // Two-finger twist rotates the map.
+        let delta = angle - base.angle;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        setRot(((base.rot + delta) % 360 + 360) % 360);
       }
 
       dragged.current = true;
@@ -222,7 +243,8 @@ export function RadarMap({
     const dy = e.clientY - prev.y;
     if (Math.abs(dx) + Math.abs(dy) > 2) dragged.current = true;
     const s = scaleOf(camRef.current);
-    setCam((c) => ({ ...c, cx: c.cx - dx * s, cy: c.cy - dy * s }));
+    const w = unrotate(dx, dy);
+    setCam((c) => ({ ...c, cx: c.cx - w.x * s, cy: c.cy - w.y * s }));
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
@@ -271,8 +293,9 @@ export function RadarMap({
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const s = scaleOf(camRef.current);
-    const wx = camRef.current.cx + (e.clientX - rect.left - rect.width / 2) * s;
-    const wy = camRef.current.cy + (e.clientY - rect.top - rect.height / 2) * s;
+    const p = unrotate(e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2);
+    const wx = camRef.current.cx + p.x * s;
+    const wy = camRef.current.cy + p.y * s;
     onMapClick(Math.round(wx * 10) / 10, Math.round(wy * 10) / 10);
   };
 
@@ -323,6 +346,7 @@ export function RadarMap({
 
         </defs>
 
+        <g transform={`rotate(${rot} ${cam.cx} ${cam.cy})`}>
         <rect
           x={cam.cx - viewW}
           y={cam.cy - viewH}
@@ -429,13 +453,14 @@ export function RadarMap({
             ))}
           </g>
         )}
+        </g>
       </svg>
 
 
 
 
       {/* Zoom controls */}
-      <div className="absolute right-3 bottom-28 flex flex-col overflow-hidden rounded-lg border border-border bg-card/90 backdrop-blur">
+      <div className="deck-surface absolute right-3 bottom-28 flex flex-col overflow-hidden rounded-xl">
         <button
           aria-label="Zoom in"
           className="px-3 py-2 text-lg leading-none text-foreground transition-colors hover:bg-accent"
@@ -451,10 +476,40 @@ export function RadarMap({
         >
           −
         </button>
+        <div className="h-px bg-border" />
+        <button
+          aria-label="Rotate map left"
+          className="px-3 py-2 text-sm leading-none text-foreground transition-colors hover:bg-accent"
+          onClick={() => setRot((r) => ((r - 15) % 360 + 360) % 360)}
+        >
+          ⟲
+        </button>
+        <button
+          aria-label="Rotate map right"
+          className="px-3 py-2 text-sm leading-none text-foreground transition-colors hover:bg-accent"
+          onClick={() => setRot((r) => (r + 15) % 360)}
+        >
+          ⟳
+        </button>
+        <div className="h-px bg-border" />
+        <button
+          aria-label="Reset map rotation to north"
+          title={`Heading up ${Math.round(rot)}° — tap for north up`}
+          className="flex flex-col items-center px-2 py-2 text-foreground transition-colors hover:bg-accent"
+          onClick={() => setRot(0)}
+        >
+          <span
+            className="text-base leading-none text-primary transition-transform duration-200"
+            style={{ transform: `rotate(${rot}deg)` }}
+          >
+            ↑
+          </span>
+          <span className="font-display text-[9px] tracking-console text-muted-foreground">N</span>
+        </button>
       </div>
 
       {detailT > 0.02 && (
-        <div className="pointer-events-none absolute bottom-28 left-3 rounded-md border border-border bg-card/85 px-2.5 py-1.5 backdrop-blur">
+        <div className="deck-surface animate-fade-in pointer-events-none absolute bottom-28 left-3 rounded-xl px-2.5 py-1.5">
           <div className="font-display text-[11px] tracking-console text-muted-foreground">
             Detail
           </div>
@@ -805,23 +860,12 @@ function FlightMarker({
   airlineTag?: string | null;
   onSelect: () => void;
 }) {
-  const kind = iconKindFor(flight.plan.aircraft);
-  const icon = ICON_PATHS[kind];
+  // One silhouette, one colour for every aircraft type.
+  const icon = UNIFORM_ICON;
   const s = labelScale * 1.1 * icon.scale;
-  const special = !["airliner", "widebody", "regional", "cargo"].includes(kind);
   const emergency = isEmergencySquawk(flight.plan.squawk);
-  const color = emergency
-    ? "var(--destructive)"
-    : flight.phase === "scheduled" || flight.phase === "arrived"
-      ? "var(--scheduled)"
-      : kind === "military" || kind === "fighter"
-        ? "#7ee081"
-        : special
-          ? "var(--primary)"
-          : flight.phase === "departing" || flight.phase === "arriving"
-            ? "var(--ground)"
-            : "var(--airborne)";
-  const rotate = UPRIGHT_KINDS.includes(kind) ? 0 : flight.heading;
+  const color = emergency ? "var(--destructive)" : "var(--airborne)";
+  const rotate = flight.heading;
 
   const badgeH = labelScale * 11;
   const tag = airlineTag ? airlineTag.slice(0, 14) : null;

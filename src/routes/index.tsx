@@ -30,6 +30,8 @@ import { useAirportRegistry } from "@/lib/airports";
 import { pickAircraftImage, useAircraftImages, useAtcSessions, useAtisMap } from "@/lib/atc";
 import { ISLANDS, AIRPORTS, airportsOfIsland, islandBySlug } from "@/lib/world";
 import { computeFlight, isVisibleOnRadar, type FlightPlan, type LiveFlight } from "@/lib/flights";
+import { CATEGORIES, categoryFor, type CategoryKey } from "@/lib/aircraft";
+import { usePersistentSet, usePersistentState } from "@/lib/persist";
 import { useFavorites, useFlightViewCounts, useRecordView } from "@/lib/favorites";
 import { useInstallPrompt } from "@/lib/pwa";
 
@@ -99,14 +101,15 @@ function RadarPage() {
   const [pendingPoint, setPendingPoint] = useState<{ x: number; y: number } | null>(null);
 
   const [regionsOpen, setRegionsOpen] = useState(false);
-  const [showClouds, setShowClouds] = useState(false);
-  const [showRoutes, setShowRoutes] = useState(true);
-  const [showLabels, setShowLabels] = useState(true);
+  const [showClouds, setShowClouds] = usePersistentState("clouds", false);
+  const [showRoutes, setShowRoutes] = usePersistentState("routes", true);
+  const [showLabels, setShowLabels] = usePersistentState("labels", true);
   const [adminCodeOpen, setAdminCodeOpen] = useState(false);
   const [adminCode, setAdminCode] = useState("");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [query, setQuery] = useState("");
-  const [widgets, setWidgets] = useState<Set<WidgetKey>>(() => new Set<WidgetKey>(["clock"]));
+  const [widgets, setWidgets] = usePersistentSet<WidgetKey>("widgets", ["clock"]);
+  const [hiddenCats, setHiddenCats] = usePersistentSet<CategoryKey>("hidden-categories", []);
   const [offsetMin, setOffsetMin] = useState(0);
 
   const { canInstall, installed, install } = useInstallPrompt();
@@ -130,10 +133,18 @@ function RadarPage() {
   };
 
   const toggleWidget = (key: WidgetKey, on: boolean) =>
-    setWidgets((prev) => {
+    setWidgets((prev: Set<WidgetKey>) => {
       const next = new Set(prev);
       if (on) next.add(key);
       else next.delete(key);
+      return next;
+    });
+
+  const toggleCategory = (key: CategoryKey, on: boolean) =>
+    setHiddenCats((prev: Set<CategoryKey>) => {
+      const next = new Set(prev);
+      if (on) next.delete(key);
+      else next.add(key);
       return next;
     });
 
@@ -171,7 +182,8 @@ function RadarPage() {
     const all = plans
       .map((p) => computeFlight(p, clock))
       .filter((f): f is LiveFlight => !!f)
-      .filter((f) => isVisibleOnRadar(f, clock));
+      .filter((f) => isVisibleOnRadar(f, clock))
+      .filter((f) => !hiddenCats.has(categoryFor(f.plan.aircraft)));
     if (!focus) return all;
     const codes = new Set(airportsOfIsland(focus).map((a) => a.icao));
     // Keep flights that touch this island, or are currently over it.
@@ -182,7 +194,8 @@ function RadarPage() {
         codes.has(f.plan.arr_icao) ||
         (isl ? Math.hypot(f.x - isl.x, f.y - isl.y) < isl.radius * 3 : false),
     );
-  }, [plans, clock, focus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans, clock, focus, Array.from(hiddenCats).sort().join(",")]);
 
 
   const selectedFlight = flights.find((f) => f.plan.id === selectedFlightId) ?? null;
@@ -336,6 +349,23 @@ function RadarPage() {
                     checked={showLabels}
                     onChange={setShowLabels}
                   />
+                </div>
+
+                <p className="px-1 pt-5 pb-2 font-display text-[11px] tracking-console text-muted-foreground">
+                  Aircraft filters
+                </p>
+                <div className="space-y-1 rounded-md border border-border bg-secondary/50 p-1">
+                  {CATEGORIES.map((c) => (
+                    <SettingRow
+                      key={c.key}
+                      id={`cat-${c.key}`}
+                      icon={<PlaneTakeoff className="size-4" />}
+                      label={c.label}
+                      hint={`Show ${c.label.toLowerCase()} on the radar`}
+                      checked={!hiddenCats.has(c.key)}
+                      onChange={(v) => toggleCategory(c.key, v)}
+                    />
+                  ))}
                 </div>
 
                 <p className="px-1 pt-5 pb-2 font-display text-[11px] tracking-console text-muted-foreground">

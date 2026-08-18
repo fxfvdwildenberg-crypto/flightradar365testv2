@@ -264,3 +264,48 @@
   border-radius: 999px;
   background-color: color-mix(in oklab, var(--color-muted-foreground) 60%, transparent);
 }
+
+/* ---- Shared FlightDeck surface for every GUI ---------------------- */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes deck-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes deck-sheen {
+  0% { opacity: 0.25; }
+  50% { opacity: 0.5; }
+  100% { opacity: 0.25; }
+}
+
+@utility animate-fade-in {
+  animation: fade-in 0.3s ease both;
+}
+@utility animate-deck-in {
+  animation: deck-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Frosted panel used by dialogs, sheets and bottom panels. */
+@utility deck-surface {
+  background-color: color-mix(in oklab, var(--color-card) 88%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-border) 90%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-panel);
+}
+
+/* Soft fade at the top and bottom of scrollable regions. */
+@utility deck-fade-y {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 18px),
+    transparent 100%
+  );
+}
+
+@utility deck-hairline {
+  border-bottom: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+}
