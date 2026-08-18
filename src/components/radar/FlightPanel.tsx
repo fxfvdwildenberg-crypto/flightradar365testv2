@@ -96,12 +96,12 @@ export function FlightPanel({
     airlines.find((a) => a.name.toLowerCase() === (flight.plan.airline ?? "").toLowerCase()) ?? null;
 
   return (
-    <div className="animate-fade-rise absolute inset-x-0 bottom-0 z-30 max-h-[82vh] rounded-t-3xl border border-border bg-card/95 backdrop-blur-xl">
+    <div className="deck-surface animate-deck-in absolute inset-x-0 bottom-0 z-30 max-h-[86dvh] overflow-hidden rounded-t-3xl">
       <div className="flex justify-center pt-2.5 pb-1">
         <span className="sheet-grab" />
       </div>
 
-      <ScrollArea className="max-h-[76vh]">
+      <ScrollArea className="max-h-[78dvh] deck-fade-y overscroll-contain">
         <div className="space-y-3 px-3 pb-6">
           {/* Hero card */}
           <section className={cn("deck-card relative p-4", accent)}>
