@@ -827,23 +827,12 @@ function FlightMarker({
   airlineTag?: string | null;
   onSelect: () => void;
 }) {
-  const kind = iconKindFor(flight.plan.aircraft);
-  const icon = ICON_PATHS[kind];
+  // One silhouette, one colour for every aircraft type.
+  const icon = UNIFORM_ICON;
   const s = labelScale * 1.1 * icon.scale;
-  const special = !["airliner", "widebody", "regional", "cargo"].includes(kind);
   const emergency = isEmergencySquawk(flight.plan.squawk);
-  const color = emergency
-    ? "var(--destructive)"
-    : flight.phase === "scheduled" || flight.phase === "arrived"
-      ? "var(--scheduled)"
-      : kind === "military" || kind === "fighter"
-        ? "#7ee081"
-        : special
-          ? "var(--primary)"
-          : flight.phase === "departing" || flight.phase === "arriving"
-            ? "var(--ground)"
-            : "var(--airborne)";
-  const rotate = UPRIGHT_KINDS.includes(kind) ? 0 : flight.heading;
+  const color = emergency ? "var(--destructive)" : "var(--airborne)";
+  const rotate = flight.heading;
 
   const badgeH = labelScale * 11;
   const tag = airlineTag ? airlineTag.slice(0, 14) : null;
