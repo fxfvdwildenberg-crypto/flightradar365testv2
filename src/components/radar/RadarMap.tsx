@@ -460,7 +460,7 @@ export function RadarMap({
 
 
       {/* Zoom controls */}
-      <div className="absolute right-3 bottom-28 flex flex-col overflow-hidden rounded-lg border border-border bg-card/90 backdrop-blur">
+      <div className="deck-surface absolute right-3 bottom-28 flex flex-col overflow-hidden rounded-xl">
         <button
           aria-label="Zoom in"
           className="px-3 py-2 text-lg leading-none text-foreground transition-colors hover:bg-accent"
@@ -476,10 +476,40 @@ export function RadarMap({
         >
           −
         </button>
+        <div className="h-px bg-border" />
+        <button
+          aria-label="Rotate map left"
+          className="px-3 py-2 text-sm leading-none text-foreground transition-colors hover:bg-accent"
+          onClick={() => setRot((r) => ((r - 15) % 360 + 360) % 360)}
+        >
+          ⟲
+        </button>
+        <button
+          aria-label="Rotate map right"
+          className="px-3 py-2 text-sm leading-none text-foreground transition-colors hover:bg-accent"
+          onClick={() => setRot((r) => (r + 15) % 360)}
+        >
+          ⟳
+        </button>
+        <div className="h-px bg-border" />
+        <button
+          aria-label="Reset map rotation to north"
+          title={`Heading up ${Math.round(rot)}° — tap for north up`}
+          className="flex flex-col items-center px-2 py-2 text-foreground transition-colors hover:bg-accent"
+          onClick={() => setRot(0)}
+        >
+          <span
+            className="text-base leading-none text-primary transition-transform duration-200"
+            style={{ transform: `rotate(${rot}deg)` }}
+          >
+            ↑
+          </span>
+          <span className="font-display text-[9px] tracking-console text-muted-foreground">N</span>
+        </button>
       </div>
 
       {detailT > 0.02 && (
-        <div className="pointer-events-none absolute bottom-28 left-3 rounded-md border border-border bg-card/85 px-2.5 py-1.5 backdrop-blur">
+        <div className="deck-surface animate-fade-in pointer-events-none absolute bottom-28 left-3 rounded-xl px-2.5 py-1.5">
           <div className="font-display text-[11px] tracking-console text-muted-foreground">
             Detail
           </div>
