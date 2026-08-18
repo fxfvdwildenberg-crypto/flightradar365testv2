@@ -167,10 +167,9 @@ export function RadarMap({
     const next = clamp(current.span * Math.exp(dy * 0.0018), minSpan, maxSpan);
     if (next === current.span) return;
     const scale = current.span / Math.min(rect.width, rect.height);
-    const px = e.clientX - rect.left - rect.width / 2;
-    const py = e.clientY - rect.top - rect.height / 2;
-    const wx = current.cx + px * scale;
-    const wy = current.cy + py * scale;
+    const p = unrotate(e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2);
+    const wx = current.cx + p.x * scale;
+    const wy = current.cy + p.y * scale;
     const k = next / current.span;
     if (animRef.current) cancelAnimationFrame(animRef.current);
     setCam({ cx: wx + (current.cx - wx) * k, cy: wy + (current.cy - wy) * k, span: next });
