@@ -10,33 +10,63 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AtcRouteImport } from './routes/atc'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as MyFlightsRouteImport } from './routes/my-flights'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AtcRoute = AtcRouteImport.update({
+  id: '/atc',
+  path: '/atc',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyFlightsRoute = MyFlightsRouteImport.update({
+  id: '/my-flights',
+  path: '/my-flights',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/atc': typeof AtcRoute
+  '/auth': typeof AuthRoute
+  '/my-flights': typeof MyFlightsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/atc': typeof AtcRoute
+  '/auth': typeof AuthRoute
+  '/my-flights': typeof MyFlightsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/atc': typeof AtcRoute
+  '/auth': typeof AuthRoute
+  '/my-flights': typeof MyFlightsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/atc' | '/auth' | '/my-flights'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/atc' | '/auth' | '/my-flights'
+  id: '__root__' | '/' | '/atc' | '/auth' | '/my-flights'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AtcRoute: typeof AtcRoute
+  AuthRoute: typeof AuthRoute
+  MyFlightsRoute: typeof MyFlightsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +78,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/atc': {
+      id: '/atc'
+      path: '/atc'
+      fullPath: '/atc'
+      preLoaderRoute: typeof AtcRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-flights': {
+      id: '/my-flights'
+      path: '/my-flights'
+      fullPath: '/my-flights'
+      preLoaderRoute: typeof MyFlightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AtcRoute: AtcRoute,
+  AuthRoute: AuthRoute,
+  MyFlightsRoute: MyFlightsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
