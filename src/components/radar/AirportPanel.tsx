@@ -31,7 +31,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 export function AirportPanel({
@@ -177,7 +176,7 @@ export function AirportPanel({
           ))}
         </TabsList>
 
-        <ScrollArea className="max-h-[52dvh] deck-fade-y overscroll-contain">
+        <div className="deck-fade-y max-h-[52dvh] overflow-x-hidden overflow-y-auto overscroll-contain">
           <TabsContent value="atis" className="m-0 p-4">
             {atis ? (
               <div className="space-y-3">
@@ -300,7 +299,7 @@ export function AirportPanel({
           <TabsContent value="arr" className="m-0">
             <FlightRows list={arrivals} mode="arr" onSelectFlight={onSelectFlight} />
           </TabsContent>
-        </ScrollArea>
+        </div>
       </Tabs>
     </div>
   );

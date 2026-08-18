@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AIRPORTS } from "@/lib/world";
-import { AIRCRAFT_TYPES, aircraftInfo } from "@/lib/aircraft";
+import { aircraftInfo } from "@/lib/aircraft";
 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ export function FlightPlanDialog({
 
   const set = <K extends keyof typeof form>(k: K, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  /** Picking an aircraft prefills its typical cruise level and speed. */
+  /** Typing a known aircraft prefills its typical cruise level and speed. */
   const pickAircraft = (name: string) => {
     const info = aircraftInfo(name);
     setForm((f) => ({
@@ -124,15 +124,13 @@ export function FlightPlanDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="font-display text-[11px] tracking-console text-muted-foreground">Aircraft</Label>
-            <Select value={form.aircraft} onValueChange={pickAircraft}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {AIRCRAFT_TYPES.map((a) => (
-                  <SelectItem key={a.name} value={a.name}>{a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="font-display text-[11px] tracking-console text-muted-foreground">Aircraft type</Label>
+            <Input
+              value={form.aircraft}
+              placeholder="Boeing 737-800"
+              className="font-mono"
+              onChange={(e) => pickAircraft(e.target.value)}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

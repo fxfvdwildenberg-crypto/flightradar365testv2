@@ -34,6 +34,7 @@ import { CATEGORIES, categoryFor, type CategoryKey } from "@/lib/aircraft";
 import { usePersistentSet, usePersistentState } from "@/lib/persist";
 import { useFavorites, useFlightViewCounts, useRecordView } from "@/lib/favorites";
 import { useInstallPrompt } from "@/lib/pwa";
+import { requestPinPermission, useFlightPinNotification, usePinnedFlightId } from "@/lib/pin";
 
 import { RadarMap } from "@/components/radar/RadarMap";
 import { AirportPanel } from "@/components/radar/AirportPanel";
@@ -113,6 +114,7 @@ function RadarPage() {
   const [offsetMin, setOffsetMin] = useState(0);
 
   const { canInstall, installed, install } = useInstallPrompt();
+  const [pinnedId, setPinnedId] = usePinnedFlightId();
 
   // Restore the admin unlock for this browser session.
   useEffect(() => {
@@ -199,6 +201,38 @@ function RadarPage() {
 
 
   const selectedFlight = flights.find((f) => f.plan.id === selectedFlightId) ?? null;
+  const pinnedFlight = flights.find((f) => f.plan.id === pinnedId) ?? null;
+
+  useFlightPinNotification(
+    pinnedFlight
+      ? {
+          id: pinnedFlight.plan.id,
+          callsign: pinnedFlight.plan.callsign,
+          route: `${pinnedFlight.dep.icao} → ${pinnedFlight.arr.icao}`,
+          progress: pinnedFlight.progress,
+          eta:
+            pinnedFlight.phase === "arrived"
+              ? "Arrived"
+              : `Lands in ${Math.max(pinnedFlight.minutesToArrival, 0)} min`,
+        }
+      : null,
+    !!pinnedFlight,
+  );
+
+  const togglePin = async (id: string) => {
+    if (pinnedId === id) {
+      setPinnedId(null);
+      toast.info("Flight unpinned");
+      return;
+    }
+    const ok = await requestPinPermission();
+    setPinnedId(id);
+    toast.success(
+      ok
+        ? "Flight pinned — progress now shows in your notifications"
+        : "Flight pinned — allow notifications to see it outside the app",
+    );
+  };
 
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -559,6 +593,9 @@ function RadarPage() {
             canFavorite={!!user}
             isFavorite={favorites.has(selectedFlight.plan.id)}
             onToggleFavorite={() => toggleFavorite.mutate(selectedFlight.plan.id)}
+            isPinned={pinnedId === selectedFlight.plan.id}
+            onTogglePin={() => void togglePin(selectedFlight.plan.id)}
+            onOpenAcars={() => setAcarsOpen(true)}
             onClose={() => setSelectedFlightId(null)}
           />
         )}
@@ -602,6 +639,17 @@ function RadarPage() {
             }}
           />
           <DockButton
+            icon={<MessageSquare className="size-5" />}
+            label="ACARS"
+            onClick={() => {
+              if (!user) {
+                window.location.href = "/auth";
+                return;
+              }
+              setAcarsOpen(true);
+            }}
+          />
+          <DockButton
             icon={<Radio className="size-5" />}
             label="ATIS"
             onClick={() => {
@@ -629,6 +677,17 @@ function RadarPage() {
 
 
       {user && <FlightPlanDialog open={planOpen} onOpenChange={setPlanOpen} userId={user.id} />}
+      {user && (
+        <AcarsDialog
+          open={acarsOpen}
+          onOpenChange={setAcarsOpen}
+          flights={flights}
+          userId={user.id}
+          displayName={user.email?.split("@")[0] ?? "PILOT"}
+          isAtc={isAtc}
+          initialFlightId={selectedFlightId}
+        />
+      )}
       {user && (
         <AtcOnlineDialog
           open={atcOpen}
