@@ -400,16 +400,3 @@ function LiveryPlane({ name, logo, tag }: { name: string; logo: string | null; t
     </div>
   );
 }
-
-function _RowsUnused({ rows }: { rows: [string, string][] }) {
-  return (
-    <dl className="space-y-1.5">
-      {rows.map(([k, v]) => (
-        <div key={k} className="flex items-start justify-between gap-3">
-          <dt className="font-display text-[11px] tracking-console text-muted-foreground">{k}</dt>
-          <dd className="max-w-[62%] text-right font-mono text-[13px] break-words text-foreground">{v}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
