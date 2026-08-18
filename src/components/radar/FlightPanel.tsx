@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { SIDE_VIEW } from "@/lib/aircraft";
+import { airlineBadge, useAirlines } from "@/lib/airlines";
 import { formatHm, phaseLabel, type LiveFlight } from "@/lib/flights";
 import { isEmergencySquawk, squawkInfo } from "@/lib/squawk";
 import { Button } from "@/components/ui/button";
@@ -88,6 +90,10 @@ export function FlightPanel({
 
   const latest = messages[0];
   const pct = Math.round(flight.progress * 100);
+
+  const { data: airlines = [] } = useAirlines();
+  const airline =
+    airlines.find((a) => a.name.toLowerCase() === (flight.plan.airline ?? "").toLowerCase()) ?? null;
 
   return (
     <div className="animate-fade-rise absolute inset-x-0 bottom-0 z-30 max-h-[82vh] rounded-t-3xl border border-border bg-card/95 backdrop-blur-xl">
@@ -212,6 +218,11 @@ export function FlightPanel({
 
           <Accordion type="multiple" className="space-y-2">
             <Section value="aircraft" icon={<Plane className="size-4" />} title="Aircraft">
+              <LiveryPlane
+                name={flight.plan.airline || "Private"}
+                logo={airline?.logo_url ?? null}
+                tag={airline ? airlineBadge(airline) : (flight.plan.airline || "PVT").slice(0, 3).toUpperCase()}
+              />
               {aircraftImage && (
                 <img
                   src={aircraftImage}
