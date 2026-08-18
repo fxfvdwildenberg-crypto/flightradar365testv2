@@ -4,6 +4,7 @@ import {
   Eye,
   Heart,
   MessageSquare,
+  Pin,
   Plane,
   Radio,
   TriangleAlert,
@@ -16,7 +17,6 @@ import { airlineBadge, useAirlines } from "@/lib/airlines";
 import { formatHm, phaseLabel, type LiveFlight } from "@/lib/flights";
 import { isEmergencySquawk, squawkInfo } from "@/lib/squawk";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Accordion,
   AccordionContent,
@@ -51,6 +51,9 @@ export function FlightPanel({
   isFavorite = false,
   canFavorite = false,
   onToggleFavorite,
+  isPinned = false,
+  onTogglePin,
+  onOpenAcars,
   onClose,
 }: {
   flight: LiveFlight;
@@ -59,6 +62,9 @@ export function FlightPanel({
   isFavorite?: boolean;
   canFavorite?: boolean;
   onToggleFavorite?: (() => void) | undefined;
+  isPinned?: boolean;
+  onTogglePin?: (() => void) | undefined;
+  onOpenAcars?: (() => void) | undefined;
   onClose: () => void;
 }) {
   const squawk = flight.plan.squawk;
@@ -101,7 +107,7 @@ export function FlightPanel({
         <span className="sheet-grab" />
       </div>
 
-      <ScrollArea className="max-h-[78dvh] deck-fade-y overscroll-contain">
+      <div className="deck-fade-y max-h-[78dvh] overflow-x-hidden overflow-y-auto overscroll-contain">
         <div className="space-y-3 px-3 pb-6">
           {/* Hero card */}
           <section className={cn("deck-card relative p-4", accent)}>
@@ -138,6 +144,15 @@ export function FlightPanel({
                     className="deck-chip flex size-8 items-center justify-center rounded-full"
                   >
                     <Heart className={cn("size-4", isFavorite && "fill-current")} />
+                  </button>
+                )}
+                {onTogglePin && (
+                  <button
+                    onClick={onTogglePin}
+                    aria-label={isPinned ? "Unpin flight" : "Pin flight to notifications"}
+                    className="deck-chip flex size-8 items-center justify-center rounded-full"
+                  >
+                    <Pin className={cn("size-4", isPinned && "fill-current")} />
                   </button>
                 )}
                 <button
@@ -303,11 +318,16 @@ export function FlightPanel({
             </Section>
           </Accordion>
 
+          {onOpenAcars && (
+            <Button className="w-full gap-2 rounded-xl" onClick={onOpenAcars}>
+              <MessageSquare className="size-4" /> Open ACARS datalink
+            </Button>
+          )}
           <Button variant="secondary" className="w-full gap-2 rounded-xl" onClick={onClose}>
             <ChevronDown className="size-4" /> Back to map
           </Button>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
