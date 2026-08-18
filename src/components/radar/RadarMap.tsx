@@ -459,43 +459,12 @@ export function RadarMap({
 
 
 
-      {/* Zoom controls */}
-      <div className="deck-surface absolute right-3 bottom-28 flex flex-col overflow-hidden rounded-xl">
-        <button
-          aria-label="Zoom in"
-          className="px-3 py-2 text-lg leading-none text-foreground transition-colors hover:bg-accent"
-          onClick={() => zoomBy(0.6)}
-        >
-          +
-        </button>
-        <div className="h-px bg-border" />
-        <button
-          aria-label="Zoom out"
-          className="px-3 py-2 text-lg leading-none text-foreground transition-colors hover:bg-accent"
-          onClick={() => zoomBy(1.7)}
-        >
-          −
-        </button>
-        <div className="h-px bg-border" />
-        <button
-          aria-label="Rotate map left"
-          className="px-3 py-2 text-sm leading-none text-foreground transition-colors hover:bg-accent"
-          onClick={() => setRot((r) => ((r - 15) % 360 + 360) % 360)}
-        >
-          ⟲
-        </button>
-        <button
-          aria-label="Rotate map right"
-          className="px-3 py-2 text-sm leading-none text-foreground transition-colors hover:bg-accent"
-          onClick={() => setRot((r) => (r + 15) % 360)}
-        >
-          ⟳
-        </button>
-        <div className="h-px bg-border" />
+      {/* Compass — tap to snap back to north (zoom/rotate use touch or wheel) */}
+      {Math.abs(rot) > 0.5 && (
         <button
           aria-label="Reset map rotation to north"
           title={`Heading up ${Math.round(rot)}° — tap for north up`}
-          className="flex flex-col items-center px-2 py-2 text-foreground transition-colors hover:bg-accent"
+          className="deck-surface animate-fade-in absolute right-3 bottom-28 flex size-11 flex-col items-center justify-center rounded-full text-foreground"
           onClick={() => setRot(0)}
         >
           <span
@@ -506,7 +475,7 @@ export function RadarMap({
           </span>
           <span className="font-display text-[9px] tracking-console text-muted-foreground">N</span>
         </button>
-      </div>
+      )}
 
       {detailT > 0.02 && (
         <div className="deck-surface animate-fade-in pointer-events-none absolute bottom-28 left-3 rounded-xl px-2.5 py-1.5">
