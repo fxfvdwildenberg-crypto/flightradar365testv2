@@ -593,6 +593,9 @@ function RadarPage() {
             canFavorite={!!user}
             isFavorite={favorites.has(selectedFlight.plan.id)}
             onToggleFavorite={() => toggleFavorite.mutate(selectedFlight.plan.id)}
+            isPinned={pinnedId === selectedFlight.plan.id}
+            onTogglePin={() => void togglePin(selectedFlight.plan.id)}
+            onOpenAcars={() => setAcarsOpen(true)}
             onClose={() => setSelectedFlightId(null)}
           />
         )}
@@ -636,6 +639,17 @@ function RadarPage() {
             }}
           />
           <DockButton
+            icon={<MessageSquare className="size-5" />}
+            label="ACARS"
+            onClick={() => {
+              if (!user) {
+                window.location.href = "/auth";
+                return;
+              }
+              setAcarsOpen(true);
+            }}
+          />
+          <DockButton
             icon={<Radio className="size-5" />}
             label="ATIS"
             onClick={() => {
@@ -663,6 +677,17 @@ function RadarPage() {
 
 
       {user && <FlightPlanDialog open={planOpen} onOpenChange={setPlanOpen} userId={user.id} />}
+      {user && (
+        <AcarsDialog
+          open={acarsOpen}
+          onOpenChange={setAcarsOpen}
+          flights={flights}
+          userId={user.id}
+          displayName={user.email?.split("@")[0] ?? "PILOT"}
+          isAtc={isAtc}
+          initialFlightId={selectedFlightId}
+        />
+      )}
       {user && (
         <AtcOnlineDialog
           open={atcOpen}
