@@ -293,8 +293,9 @@ export function RadarMap({
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const s = scaleOf(camRef.current);
-    const wx = camRef.current.cx + (e.clientX - rect.left - rect.width / 2) * s;
-    const wy = camRef.current.cy + (e.clientY - rect.top - rect.height / 2) * s;
+    const p = unrotate(e.clientX - rect.left - rect.width / 2, e.clientY - rect.top - rect.height / 2);
+    const wx = camRef.current.cx + p.x * s;
+    const wy = camRef.current.cy + p.y * s;
     onMapClick(Math.round(wx * 10) / 10, Math.round(wy * 10) / 10);
   };
 
