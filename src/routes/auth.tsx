@@ -134,6 +134,11 @@ function AuthPage() {
             </TabsContent>
 
             <TabsContent value="signup" className="mt-4 space-y-3">
+              {confirmSent && (
+                <p className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                  We sent a confirmation link to {email}. Click it, then sign in.
+                </p>
+              )}
               <Field label="Callsign / name" value={displayName} onChange={setDisplayName} />
               <Field label="Email" value={email} onChange={setEmail} type="email" />
               <Field label="Password" value={password} onChange={setPassword} type="password" />
