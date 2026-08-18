@@ -30,6 +30,8 @@ import { useAirportRegistry } from "@/lib/airports";
 import { pickAircraftImage, useAircraftImages, useAtcSessions, useAtisMap } from "@/lib/atc";
 import { ISLANDS, AIRPORTS, airportsOfIsland, islandBySlug } from "@/lib/world";
 import { computeFlight, isVisibleOnRadar, type FlightPlan, type LiveFlight } from "@/lib/flights";
+import { CATEGORIES, categoryFor, type CategoryKey } from "@/lib/aircraft";
+import { usePersistentSet, usePersistentState } from "@/lib/persist";
 import { useFavorites, useFlightViewCounts, useRecordView } from "@/lib/favorites";
 import { useInstallPrompt } from "@/lib/pwa";
 
@@ -131,10 +133,18 @@ function RadarPage() {
   };
 
   const toggleWidget = (key: WidgetKey, on: boolean) =>
-    setWidgets((prev) => {
+    setWidgets((prev: Set<WidgetKey>) => {
       const next = new Set(prev);
       if (on) next.add(key);
       else next.delete(key);
+      return next;
+    });
+
+  const toggleCategory = (key: CategoryKey, on: boolean) =>
+    setHiddenCats((prev: Set<CategoryKey>) => {
+      const next = new Set(prev);
+      if (on) next.delete(key);
+      else next.add(key);
       return next;
     });
 
