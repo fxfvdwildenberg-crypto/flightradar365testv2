@@ -351,3 +351,65 @@ function Rows({ rows }: { rows: [string, string][] }) {
     </dl>
   );
 }
+
+/** Stable accent per airline so each livery keeps its own colour. */
+function liveryHue(name: string) {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return h;
+}
+
+/**
+ * Side-view aircraft painted in the operator's livery: tail accent, cheatline
+ * and the airline logo on the forward fuselage.
+ */
+function LiveryPlane({ name, logo, tag }: { name: string; logo: string | null; tag: string }) {
+  const hue = liveryHue(name);
+  const accent = `oklch(0.62 0.16 ${hue})`;
+  const accentSoft = `oklch(0.48 0.12 ${hue})`;
+  return (
+    <div className="mb-3 overflow-hidden rounded-xl border border-border bg-secondary/40 p-3">
+      <svg viewBox="0 0 300 100" className="h-24 w-full" role="img" aria-label={`${name} livery`}>
+        <path d={SIDE_VIEW.wing} fill={accentSoft} />
+        <path d={SIDE_VIEW.fuselage} fill="oklch(0.94 0.01 250)" />
+        <path d={SIDE_VIEW.window} fill="oklch(0.42 0.03 250)" opacity={0.7} />
+        <path
+          d="M14 58 C60 66 130 68 250 62 L272 54 L250 61 C232 67 206 70 168 70 C92 70 34 64 14 52 Z"
+          fill={accent}
+        />
+        <path d={SIDE_VIEW.stab} fill={accentSoft} />
+        <path d={SIDE_VIEW.tail} fill={accent} />
+        {logo ? (
+          <image href={logo} x={38} y={38} width={54} height={20} preserveAspectRatio="xMidYMid meet" />
+        ) : (
+          <text
+            x={44}
+            y={52}
+            className="font-display"
+            fontSize={15}
+            fontWeight={700}
+            fill="oklch(0.28 0.03 250)"
+          >
+            {tag}
+          </text>
+        )}
+      </svg>
+      <p className="mt-1 text-center font-display text-[11px] tracking-console text-muted-foreground">
+        {name} livery
+      </p>
+    </div>
+  );
+}
+
+function _RowsUnused({ rows }: { rows: [string, string][] }) {
+  return (
+    <dl className="space-y-1.5">
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex items-start justify-between gap-3">
+          <dt className="font-display text-[11px] tracking-console text-muted-foreground">{k}</dt>
+          <dd className="max-w-[62%] text-right font-mono text-[13px] break-words text-foreground">{v}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
