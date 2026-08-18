@@ -352,6 +352,23 @@ function RadarPage() {
                 </div>
 
                 <p className="px-1 pt-5 pb-2 font-display text-[11px] tracking-console text-muted-foreground">
+                  Aircraft filters
+                </p>
+                <div className="space-y-1 rounded-md border border-border bg-secondary/50 p-1">
+                  {CATEGORIES.map((c) => (
+                    <SettingRow
+                      key={c.key}
+                      id={`cat-${c.key}`}
+                      icon={<PlaneTakeoff className="size-4" />}
+                      label={c.label}
+                      hint={`Show ${c.label.toLowerCase()} on the radar`}
+                      checked={!hiddenCats.has(c.key)}
+                      onChange={(v) => toggleCategory(c.key, v)}
+                    />
+                  ))}
+                </div>
+
+                <p className="px-1 pt-5 pb-2 font-display text-[11px] tracking-console text-muted-foreground">
                   Widgets
                 </p>
                 <div className="space-y-1 rounded-md border border-border bg-secondary/50 p-1">
