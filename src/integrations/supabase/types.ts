@@ -386,6 +386,53 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          flight_plan_id: string | null
+          id: string
+          last_emergency: boolean
+          last_phase: string | null
+          p256dh: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          flight_plan_id?: string | null
+          id?: string
+          last_emergency?: boolean
+          last_phase?: string | null
+          p256dh: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          flight_plan_id?: string | null
+          id?: string
+          last_emergency?: boolean
+          last_phase?: string | null
+          p256dh?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_flight_plan_id_fkey"
+            columns: ["flight_plan_id"]
+            isOneToOne: false
+            referencedRelation: "flight_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
