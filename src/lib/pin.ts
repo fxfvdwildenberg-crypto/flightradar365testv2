@@ -2,16 +2,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * "Pin" a flight so its callsign and progress stay visible outside the app —
- * a live notification in the phone's notification shade, refreshed while the
- * flight is airborne. Falls back to the tab title when notifications are
+ * a live-activity style notification in the phone's notification shade,
+ * refreshed while the flight is airborne, plus event alerts for takeoff,
+ * landing and emergencies. Falls back to the tab title when notifications are
  * unavailable or denied.
  */
 export type PinnedInfo = {
   id: string;
   callsign: string;
-  route: string;
+  depIcao: string;
+  arrIcao: string;
+  depTime: string;
+  arrTime: string;
   progress: number;
   eta: string;
+  phase: string;
+  emergency?: boolean;
+  emergencyLabel?: string | undefined;
 };
 
 const KEY = "atc365-pinned-flight";
@@ -41,44 +48,111 @@ export function usePinnedFlightId() {
 }
 
 function bar(progress: number) {
-  const filled = Math.round(Math.min(Math.max(progress, 0), 1) * 12);
-  return `${"█".repeat(filled)}${"░".repeat(12 - filled)} ${Math.round(progress * 100)}%`;
+  const filled = Math.round(Math.min(Math.max(progress, 0), 1) * 14);
+  return `${"━".repeat(filled)}✈${"┈".repeat(Math.max(14 - filled, 0))}`;
 }
 
-/** Keeps a single sticky notification in sync with the pinned flight. */
+function notify(title: string, body: string, tag: string, sticky = false) {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return null;
+  try {
+    return new Notification(title, {
+      body,
+      tag,
+      icon: "/favicon.ico",
+      badge: "/favicon.ico",
+      silent: sticky,
+      requireInteraction: sticky,
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Keeps a single sticky "live activity" notification in sync with the pinned
+ * flight, and fires one-off alerts on takeoff, landing and emergencies.
+ */
 export function useFlightPinNotification(info: PinnedInfo | null, active: boolean) {
   const ref = useRef<Notification | null>(null);
+  const lastPhase = useRef<string | null>(null);
+  const lastEmergency = useRef(false);
+  const lastId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!active || !info) {
       ref.current?.close();
       ref.current = null;
+      lastPhase.current = null;
+      lastEmergency.current = false;
+      lastId.current = null;
       if (typeof document !== "undefined") document.title = "ATC365";
       return;
     }
 
     document.title = `${info.callsign} · ${Math.round(info.progress * 100)}%`;
 
+    if (info.id !== lastId.current) {
+      lastId.current = info.id;
+      lastPhase.current = null;
+      lastEmergency.current = false;
+    }
+
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
 
-    ref.current?.close();
-    try {
-      ref.current = new Notification(`${info.callsign} · ${info.route}`, {
-        body: `${bar(info.progress)}\n${info.eta}`,
-        tag: "atc365-pinned-flight",
-        icon: "/favicon.ico",
-        badge: "/favicon.ico",
-        silent: true,
-        requireInteraction: true,
-      });
-    } catch {
-      /* notifications unsupported in this context */
+    // --- event alerts ------------------------------------------------------
+    if (info.emergency && !lastEmergency.current) {
+      notify(
+        `🚨 ${info.callsign} — ${info.emergencyLabel ?? "Emergency"}`,
+        `${info.depIcao} → ${info.arrIcao} · squawking emergency`,
+        `atc365-alert-${info.id}-emergency`,
+      );
     }
+    lastEmergency.current = !!info.emergency;
+
+    const prev = lastPhase.current;
+    if (prev && prev !== info.phase) {
+      if (info.phase === "departing")
+        notify(
+          `🛫 ${info.callsign} has taken off`,
+          `Departed ${info.depIcao} at ${info.depTime} · ${info.eta}`,
+          `atc365-alert-${info.id}-dep`,
+        );
+      if (info.phase === "arriving")
+        notify(
+          `🛬 ${info.callsign} is on approach`,
+          `Landing at ${info.arrIcao} · ${info.eta}`,
+          `atc365-alert-${info.id}-app`,
+        );
+      if (info.phase === "arrived")
+        notify(
+          `🛬 ${info.callsign} has landed`,
+          `Arrived at ${info.arrIcao} at ${info.arrTime}`,
+          `atc365-alert-${info.id}-arr`,
+        );
+    }
+    lastPhase.current = info.phase;
+
+    // --- live activity -----------------------------------------------------
+    ref.current?.close();
+    ref.current = notify(
+      `${info.callsign}   ${info.depIcao} → ${info.arrIcao}`,
+      `${info.depTime} ${bar(info.progress)} ${info.arrTime}\n${info.eta}`,
+      "atc365-pinned-flight",
+      true,
+    );
 
     return () => {
       ref.current?.close();
     };
-  }, [active, info?.callsign, info?.route, info?.eta, Math.round((info?.progress ?? 0) * 100)]);
+  }, [
+    active,
+    info?.id,
+    info?.callsign,
+    info?.eta,
+    info?.phase,
+    info?.emergency,
+    Math.round((info?.progress ?? 0) * 100),
+  ]);
 }
 
 export async function requestPinPermission() {
