@@ -208,12 +208,20 @@ function RadarPage() {
       ? {
           id: pinnedFlight.plan.id,
           callsign: pinnedFlight.plan.callsign,
-          route: `${pinnedFlight.dep.icao} → ${pinnedFlight.arr.icao}`,
+          depIcao: pinnedFlight.dep.icao,
+          arrIcao: pinnedFlight.arr.icao,
+          depTime: formatHm(pinnedFlight.plan.dep_time),
+          arrTime: formatHm(pinnedFlight.plan.arr_time),
           progress: pinnedFlight.progress,
+          phase: pinnedFlight.phase,
+          emergency: isEmergencySquawk(pinnedFlight.plan.squawk),
+          emergencyLabel: squawkInfo(pinnedFlight.plan.squawk)?.label,
           eta:
             pinnedFlight.phase === "arrived"
               ? "Arrived"
-              : `Lands in ${Math.max(pinnedFlight.minutesToArrival, 0)} min`,
+              : pinnedFlight.phase === "scheduled"
+                ? `Departs in ${Math.max(pinnedFlight.minutesToDeparture, 0)} min`
+                : `${Math.max(pinnedFlight.minutesToArrival, 0)} min until arrival`,
         }
       : null,
     !!pinnedFlight,
