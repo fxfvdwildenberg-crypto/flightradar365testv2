@@ -1,4 +1,5 @@
 import { airportByIcao, type Airport } from "./world";
+import { pointAlong, routeAround, tfrBlocks, type Pt, type Tfr } from "./tfr";
 
 export type FlightPlan = {
   id: string;
@@ -37,6 +38,10 @@ export type LiveFlight = {
   groundSpeed: number;
   minutesToDeparture: number;
   minutesToArrival: number;
+  /** Actual track, bent around any restricted areas the flight must avoid. */
+  path: Pt[];
+  /** TFRs this flight is routing around. */
+  avoiding: string[];
 };
 
 const MIN = 60_000;
@@ -48,7 +53,7 @@ function easeClimb(p: number) {
   return 1;
 }
 
-export function computeFlight(plan: FlightPlan, now: number): LiveFlight | null {
+export function computeFlight(plan: FlightPlan, now: number, tfrs: Tfr[] = []): LiveFlight | null {
   const dep = airportByIcao(plan.dep_icao);
   const arr = airportByIcao(plan.arr_icao);
   if (!dep || !arr) return null;
@@ -66,24 +71,34 @@ export function computeFlight(plan: FlightPlan, now: number): LiveFlight | null 
   else if (progress > 0.85) phase = "arriving";
   else phase = "enroute";
 
-  // Slight great-circle-like bow so tracks don't look like plain rulers.
+  const blocking = tfrs.filter((t) => tfrBlocks(t, plan.callsign, plan.airline));
+  const start: Pt = { x: dep.x, y: dep.y };
+  const end: Pt = { x: arr.x, y: arr.y };
+  const detour = routeAround(start, end, blocking.map((t) => t.points));
+  const rerouted = detour.length > 2;
+
   const dx = arr.x - dep.x;
   const dy = arr.y - dep.y;
   const dist = Math.hypot(dx, dy) || 1;
-  const bow = Math.min(dist * 0.08, 24);
-  const nx = -dy / dist;
-  const ny = dx / dist;
-  const arc = Math.sin(progress * Math.PI) * bow;
 
-  const x = dep.x + dx * progress + nx * arc;
-  const y = dep.y + dy * progress + ny * arc;
+  // Straight legs get a slight great-circle-like bow so tracks don't look like
+  // plain rulers; detoured legs already have shape from the avoidance waypoints.
+  let path: Pt[] = detour;
+  if (!rerouted) {
+    const bow = Math.min(dist * 0.08, 24);
+    const nx = -dy / dist;
+    const ny = dx / dist;
+    path = Array.from({ length: 17 }, (_, i) => {
+      const p = i / 16;
+      const arc = Math.sin(p * Math.PI) * bow;
+      return { x: dep.x + dx * p + nx * arc, y: dep.y + dy * p + ny * arc };
+    });
+  }
 
-  const step = 0.01;
-  const p2 = Math.min(1, progress + step);
-  const arc2 = Math.sin(p2 * Math.PI) * bow;
-  const x2 = dep.x + dx * p2 + nx * arc2;
-  const y2 = dep.y + dy * p2 + ny * arc2;
-  const heading = (Math.atan2(y2 - y || dy, x2 - x || dx) * 180) / Math.PI + 90;
+  const at = pointAlong(path, progress);
+  const x = at.x;
+  const y = at.y;
+  const heading = at.heading;
 
   const altitude =
     phase === "scheduled" || phase === "arrived"
@@ -108,6 +123,8 @@ export function computeFlight(plan: FlightPlan, now: number): LiveFlight | null 
     groundSpeed: phase === "scheduled" || phase === "arrived" ? 0 : groundSpeed,
     minutesToDeparture: Math.round((depMs - now) / MIN),
     minutesToArrival: Math.round((arrMs - now) / MIN),
+    path,
+    avoiding: rerouted ? blocking.map((t) => t.name) : [],
   };
 }
 
