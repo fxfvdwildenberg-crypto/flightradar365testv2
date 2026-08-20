@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Clock, Eye, Heart, History, TriangleAlert } from "lucide-react";
 import type { LiveFlight } from "@/lib/flights";
 import { isEmergencySquawk, squawkInfo } from "@/lib/squawk";
@@ -35,6 +36,10 @@ export function WidgetDeck({
   onOffsetChange: (v: number) => void;
   onSelectFlight: (id: string) => void;
 }) {
+  // The clock only renders after hydration; SSR time never matches the client.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   if (enabled.size === 0) return null;
 
   const emergencies = flights.filter((f) => isEmergencySquawk(f.plan.squawk));
@@ -50,10 +55,10 @@ export function WidgetDeck({
       {enabled.has("clock") && (
         <Card icon={<Clock className="size-3.5" />} title="Clock">
           <div className="font-mono text-lg text-primary">
-            {new Date(now).toISOString().slice(11, 19)}Z
+            {mounted ? `${new Date(now).toISOString().slice(11, 19)}Z` : "--:--:--Z"}
           </div>
           <div className="font-mono text-xs text-muted-foreground">
-            {new Date(now).toLocaleTimeString([], { hour12: false })} local
+            {mounted ? new Date(now).toLocaleTimeString([], { hour12: false }) : "--:--:--"} local
           </div>
         </Card>
       )}

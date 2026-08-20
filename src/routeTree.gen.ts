@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AtcRouteImport } from './routes/atc'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as MyFlightsRouteImport } from './routes/my-flights'
+import { Route as ApiPublicPushFlightEventsRouteImport } from './routes/api/public/push/flight-events'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +35,26 @@ const MyFlightsRoute = MyFlightsRouteImport.update({
   path: '/my-flights',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPushFlightEventsRoute =
+  ApiPublicPushFlightEventsRouteImport.update({
+    id: '/api/public/push/flight-events',
+    path: '/api/public/push/flight-events',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/atc': typeof AtcRoute
   '/auth': typeof AuthRoute
   '/my-flights': typeof MyFlightsRoute
+  '/api/public/push/flight-events': typeof ApiPublicPushFlightEventsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/atc': typeof AtcRoute
   '/auth': typeof AuthRoute
   '/my-flights': typeof MyFlightsRoute
+  '/api/public/push/flight-events': typeof ApiPublicPushFlightEventsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +62,21 @@ export interface FileRoutesById {
   '/atc': typeof AtcRoute
   '/auth': typeof AuthRoute
   '/my-flights': typeof MyFlightsRoute
+  '/api/public/push/flight-events': typeof ApiPublicPushFlightEventsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/atc' | '/auth' | '/my-flights'
+  fullPaths:
+    '/' | '/atc' | '/auth' | '/my-flights' | '/api/public/push/flight-events'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/atc' | '/auth' | '/my-flights'
-  id: '__root__' | '/' | '/atc' | '/auth' | '/my-flights'
+  to: '/' | '/atc' | '/auth' | '/my-flights' | '/api/public/push/flight-events'
+  id:
+    | '__root__'
+    | '/'
+    | '/atc'
+    | '/auth'
+    | '/my-flights'
+    | '/api/public/push/flight-events'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +84,7 @@ export interface RootRouteChildren {
   AtcRoute: typeof AtcRoute
   AuthRoute: typeof AuthRoute
   MyFlightsRoute: typeof MyFlightsRoute
+  ApiPublicPushFlightEventsRoute: typeof ApiPublicPushFlightEventsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +117,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyFlightsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/push/flight-events': {
+      id: '/api/public/push/flight-events'
+      path: '/api/public/push/flight-events'
+      fullPath: '/api/public/push/flight-events'
+      preLoaderRoute: typeof ApiPublicPushFlightEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +132,7 @@ const rootRouteChildren: RootRouteChildren = {
   AtcRoute: AtcRoute,
   AuthRoute: AuthRoute,
   MyFlightsRoute: MyFlightsRoute,
+  ApiPublicPushFlightEventsRoute: ApiPublicPushFlightEventsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

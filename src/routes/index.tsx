@@ -8,6 +8,7 @@ import {
   Crosshair,
   Download,
   Globe2,
+  BellRing,
   GraduationCap,
   Headphones,
   LayoutGrid,
@@ -36,6 +37,12 @@ import { usePersistentSet, usePersistentState } from "@/lib/persist";
 import { useFavorites, useFlightViewCounts, useRecordView } from "@/lib/favorites";
 import { useInstallPrompt } from "@/lib/pwa";
 import { requestPinPermission, useFlightPinNotification, usePinnedFlightId } from "@/lib/pin";
+import {
+  pushSupported,
+  sendTestNotification,
+  subscribeToFlightPush,
+  unsubscribeFromFlightPush,
+} from "@/lib/push";
 
 import { RadarMap } from "@/components/radar/RadarMap";
 import { AirportPanel } from "@/components/radar/AirportPanel";
@@ -231,16 +238,32 @@ function RadarPage() {
   const togglePin = async (id: string) => {
     if (pinnedId === id) {
       setPinnedId(null);
+      await unsubscribeFromFlightPush().catch(() => undefined);
       toast.info("Flight unpinned");
       return;
     }
     const ok = await requestPinPermission();
     setPinnedId(id);
+    let background = false;
+    if (ok && pushSupported()) {
+      background = await subscribeToFlightPush(id).catch(() => false);
+    }
     toast.success(
-      ok
-        ? "Flight pinned — progress now shows in your notifications"
-        : "Flight pinned — allow notifications to see it outside the app",
+      background
+        ? "Flight pinned — alerts arrive even with the app closed"
+        : ok
+          ? "Flight pinned — progress now shows in your notifications"
+          : "Flight pinned — allow notifications to see it outside the app",
     );
+  };
+
+  const testNotification = async () => {
+    try {
+      await sendTestNotification();
+      toast.success("Test notification sent");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send a test notification");
+    }
   };
 
   const searchResults = useMemo(() => {
@@ -457,6 +480,13 @@ function RadarPage() {
                       <Download className="size-4" /> Install ATC365 app
                     </Button>
                   )}
+                  <Button
+                    variant="secondary"
+                    className="w-full justify-start gap-2"
+                    onClick={() => void testNotification()}
+                  >
+                    <BellRing className="size-4" /> Send test notification
+                  </Button>
                   <Button variant="secondary" className="w-full justify-start gap-2" onClick={resetTutorial}>
                     <GraduationCap className="size-4" /> Replay tutorial
                   </Button>
