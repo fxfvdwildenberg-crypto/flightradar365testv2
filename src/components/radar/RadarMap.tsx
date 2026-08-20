@@ -13,6 +13,7 @@ import {
 } from "@/lib/world";
 import type { LiveFlight } from "@/lib/flights";
 import { ICON_PATHS } from "@/lib/aircraft";
+import { polygonCentroid, type Pt, type Tfr } from "@/lib/tfr";
 
 /**
  * Every aircraft is drawn with the same silhouette and the same colour so the
@@ -81,6 +82,11 @@ type Props = {
   /** Admin placement mode: the next tap on the map returns world coordinates. */
   placing?: boolean | undefined;
   onMapClick?: ((x: number, y: number) => void) | undefined;
+  /** Active temporary flight restrictions drawn as translucent red areas. */
+  tfrs?: Tfr[] | undefined;
+  onSelectTfr?: ((id: string) => void) | undefined;
+  /** Polygon currently being drawn by an admin. */
+  draftTfr?: Pt[] | undefined;
 };
 
 export function RadarMap({
@@ -99,6 +105,9 @@ export function RadarMap({
   airlineLogos,
   placing = false,
   onMapClick,
+  tfrs,
+  onSelectTfr,
+  draftTfr,
 }: Props) {
 
 
@@ -383,6 +392,14 @@ export function RadarMap({
 
           .map((f) => (
             <g key={`trk-${f.plan.id}`}>
+              <polyline
+                points={f.path.map((p) => `${p.x},${p.y}`).join(" ")}
+                fill="none"
+                stroke="var(--primary)"
+                strokeWidth={labelScale * 1.6}
+                strokeDasharray={`${labelScale * 6} ${labelScale * 5}`}
+                opacity={0.45}
+              />
               <line
                 x1={f.dep.x}
                 y1={f.dep.y}
@@ -392,18 +409,57 @@ export function RadarMap({
                 strokeWidth={labelScale * 2}
                 opacity={0.9}
               />
-              <line
-                x1={f.x}
-                y1={f.y}
-                x2={f.arr.x}
-                y2={f.arr.y}
-                stroke="var(--primary)"
-                strokeWidth={labelScale * 1.6}
-                strokeDasharray={`${labelScale * 6} ${labelScale * 5}`}
-                opacity={0.45}
-              />
             </g>
           ))}
+
+        {/* Temporary flight restrictions */}
+        {(tfrs ?? []).map((t) =>
+          t.points.length >= 3 ? (
+            <g key={`tfr-${t.id}`}>
+              <polygon
+                points={t.points.map((p) => `${p.x},${p.y}`).join(" ")}
+                fill="#ef4444"
+                fillOpacity={0.22}
+                stroke="#ef4444"
+                strokeWidth={labelScale * 1.6}
+                strokeDasharray={`${labelScale * 5} ${labelScale * 4}`}
+                style={{ cursor: "pointer" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!dragged.current) onSelectTfr?.(t.id);
+                }}
+              />
+              {showLabels && (
+                <text
+                  x={polygonCentroid(t.points).x}
+                  y={polygonCentroid(t.points).y}
+                  textAnchor="middle"
+                  className="pointer-events-none font-display"
+                  fill="#fecaca"
+                  fontSize={labelScale * 11}
+                >
+                  TFR · {t.name}
+                </text>
+              )}
+            </g>
+          ) : null,
+        )}
+
+        {/* Polygon being drawn by an admin */}
+        {draftTfr && draftTfr.length > 0 && (
+          <g className="pointer-events-none">
+            <polygon
+              points={draftTfr.map((p) => `${p.x},${p.y}`).join(" ")}
+              fill="#ef4444"
+              fillOpacity={draftTfr.length > 2 ? 0.16 : 0}
+              stroke="#fca5a5"
+              strokeWidth={labelScale * 1.4}
+            />
+            {draftTfr.map((p, i) => (
+              <circle key={i} cx={p.x} cy={p.y} r={labelScale * 3} fill="#fca5a5" />
+            ))}
+          </g>
+        )}
 
         {flights.map((f) => (
           <FlightMarker
