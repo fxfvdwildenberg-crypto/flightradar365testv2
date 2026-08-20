@@ -433,6 +433,48 @@ export type Database = {
           },
         ]
       }
+      tfrs: {
+        Row: {
+          allowed_callsigns: string[]
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          max_alt: number
+          min_alt: number
+          name: string
+          points: Json
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          allowed_callsigns?: string[]
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          max_alt?: number
+          min_alt?: number
+          name: string
+          points: Json
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allowed_callsigns?: string[]
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          max_alt?: number
+          min_alt?: number
+          name?: string
+          points?: Json
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

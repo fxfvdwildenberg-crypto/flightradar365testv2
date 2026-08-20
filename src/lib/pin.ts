@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getPushRegistration } from "./push";
 
 /**
  * "Pin" a flight so its callsign and progress stay visible outside the app —
@@ -52,36 +53,64 @@ function bar(progress: number) {
   return `${"━".repeat(filled)}✈${"┈".repeat(Math.max(14 - filled, 0))}`;
 }
 
-function notify(title: string, body: string, tag: string, sticky = false) {
-  if (typeof Notification === "undefined" || Notification.permission !== "granted") return null;
+const STICKY_TAG = "atc365-pinned-flight";
+
+/**
+ * Shows a notification through the service worker registration. Mobile
+ * browsers (Android Chrome in particular) refuse `new Notification(...)`, so
+ * `registration.showNotification` is the only path that works there. The
+ * constructor stays as a desktop fallback when no worker is available.
+ */
+async function notify(title: string, body: string, tag: string, sticky = false) {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  const options: NotificationOptions = {
+    body,
+    tag,
+    icon: "/favicon.ico",
+    badge: "/favicon.ico",
+    silent: sticky,
+    requireInteraction: sticky,
+  };
   try {
-    return new Notification(title, {
-      body,
-      tag,
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
-      silent: sticky,
-      requireInteraction: sticky,
-    });
+    const registration = await getPushRegistration();
+    if (registration) {
+      await registration.showNotification(title, options);
+      return;
+    }
   } catch {
-    return null;
+    /* fall through to the constructor */
+  }
+  try {
+    new Notification(title, options);
+  } catch {
+    /* notifications unavailable */
   }
 }
+
+async function closeNotifications(tag: string) {
+  try {
+    const registration = await getPushRegistration();
+    if (!registration) return;
+    const open = await registration.getNotifications({ tag });
+    open.forEach((n: Notification) => n.close());
+  } catch {
+    /* nothing to close */
+  }
+}
+
 
 /**
  * Keeps a single sticky "live activity" notification in sync with the pinned
  * flight, and fires one-off alerts on takeoff, landing and emergencies.
  */
 export function useFlightPinNotification(info: PinnedInfo | null, active: boolean) {
-  const ref = useRef<Notification | null>(null);
   const lastPhase = useRef<string | null>(null);
   const lastEmergency = useRef(false);
   const lastId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!active || !info) {
-      ref.current?.close();
-      ref.current = null;
+      void closeNotifications(STICKY_TAG);
       lastPhase.current = null;
       lastEmergency.current = false;
       lastId.current = null;
@@ -133,16 +162,15 @@ export function useFlightPinNotification(info: PinnedInfo | null, active: boolea
     lastPhase.current = info.phase;
 
     // --- live activity -----------------------------------------------------
-    ref.current?.close();
-    ref.current = notify(
+    void notify(
       `${info.callsign}   ${info.depIcao} → ${info.arrIcao}`,
       `${info.depTime} ${bar(info.progress)} ${info.arrTime}\n${info.eta}`,
-      "atc365-pinned-flight",
+      STICKY_TAG,
       true,
     );
 
     return () => {
-      ref.current?.close();
+      void closeNotifications(STICKY_TAG);
     };
   }, [
     active,
