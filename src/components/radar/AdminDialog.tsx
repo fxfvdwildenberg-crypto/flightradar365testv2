@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Crosshair, Plus, Trash2 } from "lucide-react";
+import { Clock, Crosshair, Pencil, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ISLANDS } from "@/lib/world";
+import { expiresLabel, TFR_HOURS, parsePoints, type Pt, type Tfr } from "@/lib/tfr";
 import type { AirportRow } from "@/lib/airports";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,12 +36,18 @@ export function AdminDialog({
   initialIcao,
   pendingPoint,
   onRequestPlace,
+  tfrDraft,
+  onRequestDrawTfr,
+  onClearTfrDraft,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initialIcao?: string | null;
   pendingPoint?: { x: number; y: number } | null;
   onRequestPlace?: (() => void) | undefined;
+  tfrDraft?: Pt[] | undefined;
+  onRequestDrawTfr?: (() => void) | undefined;
+  onClearTfrDraft?: (() => void) | undefined;
 }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<string | null>(initialIcao ?? null);
@@ -71,9 +78,10 @@ export function AdminDialog({
         </DialogHeader>
 
         <Tabs defaultValue="airports">
-          <TabsList className="mx-4 mt-3 grid grid-cols-2">
+          <TabsList className="mx-4 mt-3 grid grid-cols-3">
             <TabsTrigger value="airports">Airports</TabsTrigger>
-            <TabsTrigger value="aircraft">Aircraft photos</TabsTrigger>
+            <TabsTrigger value="aircraft">Aircraft</TabsTrigger>
+            <TabsTrigger value="tfr">TFRs</TabsTrigger>
           </TabsList>
 
           <TabsContent value="airports" className="m-0">
@@ -146,9 +154,19 @@ export function AdminDialog({
           </TabsContent>
 
           <TabsContent value="aircraft" className="m-0">
-            <ScrollArea className="max-h-[64vh]">
+            <div className="max-h-[64vh] overflow-y-auto">
               <AircraftImages />
-            </ScrollArea>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="tfr" className="m-0">
+            <div className="max-h-[64vh] overflow-y-auto">
+              <TfrManager
+                draft={tfrDraft ?? []}
+                onRequestDraw={onRequestDrawTfr}
+                onClearDraft={onClearTfrDraft}
+              />
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -374,6 +392,161 @@ function Field({
         {label}
       </Label>
       <Input value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function TfrManager({
+  draft,
+  onRequestDraw,
+  onClearDraft,
+}: {
+  draft: Pt[];
+  onRequestDraw?: (() => void) | undefined;
+  onClearDraft?: (() => void) | undefined;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [reason, setReason] = useState("");
+  const [allowed, setAllowed] = useState("");
+  const [minAlt, setMinAlt] = useState("0");
+  const [maxAlt, setMaxAlt] = useState("60000");
+
+  const { data: rows = [] } = useQuery({
+    queryKey: ["admin_tfrs"],
+    queryFn: async (): Promise<Tfr[]> => {
+      const { data, error } = await supabase
+        .from("tfrs")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((r) => ({
+        id: r.id,
+        name: r.name,
+        reason: r.reason,
+        points: parsePoints(r.points),
+        allowed_callsigns: r.allowed_callsigns ?? [],
+        min_alt: r.min_alt,
+        max_alt: r.max_alt,
+        expires_at: r.expires_at,
+        created_at: r.created_at,
+      }));
+    },
+  });
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["admin_tfrs"] });
+    qc.invalidateQueries({ queryKey: ["tfrs"] });
+  };
+
+  const create = useMutation({
+    mutationFn: async () => {
+      if (!name.trim()) throw new Error("Give the TFR a name");
+      if (draft.length < 3) throw new Error("Draw at least three points on the map");
+      const { data: auth } = await supabase.auth.getUser();
+      const { error } = await supabase.from("tfrs").insert({
+        name: name.trim(),
+        reason: reason.trim() || null,
+        points: draft,
+        allowed_callsigns: allowed
+          .split(",")
+          .map((c) => c.trim().toUpperCase())
+          .filter(Boolean),
+        min_alt: Number(minAlt) || 0,
+        max_alt: Number(maxAlt) || 60000,
+        created_by: auth.user?.id ?? null,
+        expires_at: new Date(Date.now() + TFR_HOURS * 3600_000).toISOString(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("TFR published");
+      setName("");
+      setReason("");
+      setAllowed("");
+      onClearDraft?.();
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const extend = async (t: Tfr) => {
+    const base = Math.max(Date.now(), new Date(t.expires_at).getTime());
+    const { error } = await supabase
+      .from("tfrs")
+      .update({ expires_at: new Date(base + TFR_HOURS * 3600_000).toISOString() })
+      .eq("id", t.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`${t.name} extended by ${TFR_HOURS}h`);
+    refresh();
+  };
+
+  const remove = async (t: Tfr) => {
+    const { error } = await supabase.from("tfrs").delete().eq("id", t.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    refresh();
+  };
+
+  return (
+    <div className="space-y-4 p-4">
+      <div className="space-y-3 rounded-md border border-border bg-secondary/40 p-3">
+        <div className="font-display text-[11px] tracking-console text-muted-foreground">
+          New restricted area · auto-expires after {TFR_HOURS}h
+        </div>
+        <Field label="Name" value={name} onChange={setName} />
+        <Field label="Reason" value={reason} onChange={setReason} />
+        <Field
+          label="Allowed callsigns / airlines (comma separated)"
+          value={allowed}
+          onChange={setAllowed}
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Min alt (ft)" value={minAlt} onChange={setMinAlt} />
+          <Field label="Max alt (ft)" value={maxAlt} onChange={setMaxAlt} />
+        </div>
+        {onRequestDraw && (
+          <Button variant="secondary" className="w-full gap-2" onClick={onRequestDraw}>
+            <Pencil className="size-4" />
+            {draft.length >= 3 ? `Redraw shape (${draft.length} points)` : "Draw shape on map"}
+          </Button>
+        )}
+        <div className="font-mono text-[11px] text-muted-foreground">
+          {draft.length >= 3
+            ? `${draft.length} points captured`
+            : "Tap the map to trace the zone, then press Done."}
+        </div>
+        <Button className="w-full" onClick={() => create.mutate()} disabled={create.isPending}>
+          Publish TFR
+        </Button>
+      </div>
+
+      <ul className="divide-y divide-border rounded-md border border-border">
+        {rows.map((t) => (
+          <li key={t.id} className="flex items-center gap-2 px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm text-foreground">{t.name}</div>
+              <div className="font-mono text-[11px] text-muted-foreground">
+                {t.points.length} pts · {t.min_alt}–{t.max_alt} ft · {expiresLabel(t)}
+              </div>
+            </div>
+            <Button size="icon" variant="ghost" aria-label={`Extend ${t.name}`} onClick={() => void extend(t)}>
+              <Clock className="size-4 text-primary" />
+            </Button>
+            <Button size="icon" variant="ghost" aria-label={`Delete ${t.name}`} onClick={() => void remove(t)}>
+              <Trash2 className="size-4 text-destructive" />
+            </Button>
+          </li>
+        ))}
+        {!rows.length && (
+          <li className="px-3 py-6 text-center text-sm text-muted-foreground">No TFRs yet.</li>
+        )}
+      </ul>
     </div>
   );
 }
