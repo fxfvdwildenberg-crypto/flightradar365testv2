@@ -212,7 +212,7 @@ function RadarPage() {
         (isl ? Math.hypot(f.x - isl.x, f.y - isl.y) < isl.radius * 3 : false),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plans, clock, focus, Array.from(hiddenCats).sort().join(",")]);
+  }, [plans, clock, focus, tfrs, Array.from(hiddenCats).sort().join(",")]);
 
 
   const selectedFlight = flights.find((f) => f.plan.id === selectedFlightId) ?? null;
